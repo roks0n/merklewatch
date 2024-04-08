@@ -36,34 +36,29 @@ func main() {
 
 	fmt.Println("Merklewatch started")
 	sigs := make(chan os.Signal, 1)
-	done := make(chan bool, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	var lastCheck time.Time
+	ticker := time.NewTicker(60 * time.Second)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-sigs:
-			fmt.Println("Signal received")
-			done <- true
-		case <-done:
-			fmt.Println("Exiting ...")
+			fmt.Println("Signal received, exiting...")
 			return
-		default:
-			if time.Since(lastCheck) > 5*time.Second {
-				fmt.Println("Checking data...")
+		case <-ticker.C:
+			fmt.Println("Checking data...")
 
-				data := reportData()
-				fmt.Printf("Result: %+v\n", data)
-				mklp_price.Set(data.MKLPPrice)
-				usdcBalance.Set(data.USDCBalance)
-				mklpSupply.Set(data.MKLPSupply)
-				adjustMKLPSupply.Set(data.AdjustMKLPSupply)
-				apr.Set(data.APR)
-
-				lastCheck = time.Now()
+			data := reportData()
+			if data == nil {
+				continue
 			}
-			time.Sleep(1 * time.Second)
+
+			mklp_price.Set(data.MKLPPrice)
+			usdcBalance.Set(data.USDCBalance)
+			mklpSupply.Set(data.MKLPSupply)
+			adjustMKLPSupply.Set(data.AdjustMKLPSupply)
+			apr.Set(data.APR)
 		}
 	}
 }
